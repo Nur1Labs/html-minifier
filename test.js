@@ -10,7 +10,7 @@ function load(path) {
 }
 
 var alert = console.log;
-var QUnit = load('qunitjs');
+var QUnit = load('qunit');
 
 function hook() {
   var failures = [];
@@ -23,13 +23,13 @@ function hook() {
     details.failures = failures;
     alert(JSON.stringify(details));
   });
+  QUnit.start();
 }
 
 if (typeof phantom === 'undefined') {
   load('./src/htmlminifier');
-  hook();
   require(process.argv[2]);
-  QUnit.load();
+  hook();
 }
 else {
   var system = require('system');

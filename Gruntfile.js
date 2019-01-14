@@ -6,7 +6,7 @@ function qunitVersion() {
     return '';
   };
   try {
-    return require('qunitjs').version;
+    return require('qunit').version;
   }
   finally {
     Error.prepareStackTrace = prepareStackTrace;
@@ -30,7 +30,25 @@ module.exports = function(grunt) {
       src: {
         options: {
           banner: '<%= banner %>',
+          preBundleCB: function() {
+            var fs = require('fs');
+            var UglifyJS = require('uglify-js');
+            var files = {};
+            UglifyJS.FILES.forEach(function(file) {
+              files[file] = fs.readFileSync(file, 'utf8');
+            });
+            fs.writeFileSync('./dist/uglify.js', UglifyJS.minify(files, {
+              compress: false,
+              mangle: false,
+              wrap: 'exports'
+            }).code);
+          },
+          postBundleCB: function(err, src, next) {
+            require('fs').unlinkSync('./dist/uglify.js');
+            next(err, src);
+          },
           require: [
+            './dist/uglify.js:uglify-js',
             './src/htmlminifier.js:html-minifier'
           ]
         },
@@ -123,7 +141,15 @@ module.exports = function(grunt) {
           errors.push(-1);
         }
         else {
-          errors.push(report(testType, JSON.parse(result.stdout)));
+          var output = result.stdout;
+          var index = output.lastIndexOf('\n');
+          if (index !== -1) {
+            // There's something before the report JSON
+            // Log it to the console -- it's probably some debug output:
+            console.log(output.slice(0, index));
+            output = output.slice(index);
+          }
+          errors.push(report(testType, JSON.parse(output)));
         }
         if (errors.length === 2) {
           done(!errors[0] && !errors[1]);
